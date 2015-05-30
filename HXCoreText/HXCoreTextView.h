@@ -18,4 +18,9 @@
 @property(nonatomic,assign)BOOL highlightBackground; //default is YES
 @property(nonatomic,assign)BOOL enableURL;
 
+
+
+//获取绘制大小
+-(CGSize)sizeAttributedWithFont:(UIFont *)font constrainedToSize:(CGSize)size;
+
 @end

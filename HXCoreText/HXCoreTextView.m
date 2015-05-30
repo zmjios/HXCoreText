@@ -92,7 +92,7 @@ static CGFloat widthCallback( void* ref ){
 }
 
 
-- (void)generateAttributedString
+- (NSMutableAttributedString *)generateAttributedString
 {
     [self.images removeAllObjects];
     [self.links removeAllObjects];
@@ -100,7 +100,7 @@ static CGFloat widthCallback( void* ref ){
     if (!_text) {
         self.attrString=nil;
         self.forTruncating=nil;
-        return;
+        return nil;
     }
     
     NSDictionary *fontcolorDic = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -136,8 +136,6 @@ static CGFloat widthCallback( void* ref ){
         return res1.range.location-res2.range.location;
         
     }];
-    
-    NSLog(@"chunks = %@",chunks);
     
     @try
     {
@@ -257,7 +255,7 @@ static CGFloat widthCallback( void* ref ){
     [temp addAttributes:attrDictionary range:NSMakeRange(0, [temp length])];
     CFRelease(paragraphStyle);
     
-    self.attrString = temp;
+    return temp;
 }
 
 
@@ -268,13 +266,11 @@ static CGFloat widthCallback( void* ref ){
     
     //翻转坐标系
     CGContextRef context = UIGraphicsGetCurrentContext();
-//    UIGraphicsBeginImageContextWithOptions(self.frame.size, YES, 0);
-//    [self.backgroundColor set];
-//    CGContextFillRect(context, CGRectMake(0, 0, self.frame.size.width, self.frame.size.height));
-    CGContextTranslateCTM(context, 0, self.bounds.size.height);
+    CGContextSetTextMatrix(context, CGAffineTransformIdentity);
+    CGContextTranslateCTM(context, 0, CGRectGetHeight(self.bounds));
     CGContextScaleCTM(context, 1.0, -1.0);
     
-    [self generateAttributedString];
+    self.attrString = [self generateAttributedString];
     if (!self.attrString) {
         return;
     }
@@ -286,18 +282,17 @@ static CGFloat widthCallback( void* ref ){
     
     // 构造CTFrame
     CTFramesetterRef framersetter = CTFramesetterCreateWithAttributedString((CFAttributedStringRef)self.attrString);
-    CFRange fitRange;
-    
     //限制frame
+    CFRange fitRange;
     CTFramesetterSuggestFrameSizeWithConstraints(framersetter, CFRangeMake(0, 0), NULL, rect.size, &fitRange);
     CTFrameRef ctframe = CTFramesetterCreateFrame(framersetter, CFRangeMake(0, self.attrString.length), path, NULL);
     CTFrameDraw(ctframe, context);
     
     // 得到Frame中的每一行，装在一个CFArray里
-    NSArray *lines=(NSArray *)CTFrameGetLines(ctframe);
+    CFArrayRef lines = CTFrameGetLines(ctframe);
     
     // 得到每一行的Line Origin（行原点），用以计算每一行的图片位置，注意，得到的点是以CTFrame为坐标系的坐标
-    CGPoint lineOrigins[[lines count]];
+    CGPoint lineOrigins[CFArrayGetCount(lines)];
     CTFrameGetLineOrigins(ctframe, CFRangeMake(0, 0), lineOrigins);
     
     if (self.images && self.images.count)
@@ -309,9 +304,9 @@ static CGFloat widthCallback( void* ref ){
         NSUInteger lineIndex = 0;
         
         // 下面遍历Frame中的每一行，逐行绘制图片
-        for (id lineObj in lines)
+        for (int i  = 0; i < CFArrayGetCount(lines); i++)
         {
-            CTLineRef line=(__bridge CTLineRef)lineObj;
+            CTLineRef line = CFArrayGetValueAtIndex(lines, i);
             // 得到这行中的所有CTRun，状态一个CFArray里
             CFArrayRef runs = CTLineGetGlyphRuns(line);
             
@@ -323,16 +318,13 @@ static CGFloat widthCallback( void* ref ){
                     CGRect imageRunBounds;
                     CGFloat ascent;
                     CGFloat descent;
-                    CGPoint lineOrigin = lineOrigins[j];
+                    CGPoint lineOrigin = lineOrigins[i];
                     CGFloat xOffset = CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, NULL);
                     
                     imageRunBounds.size.width = CTRunGetTypographicBounds(run, CFRangeMake(0, 0), &ascent, &descent, NULL);
                     imageRunBounds.size.height = ascent + descent;
                     imageRunBounds.origin.x = lineOrigin.x + xOffset;
                     imageRunBounds.origin.y = lineOrigin.y;
-                    
-//                    imageRunBounds.size.width = CTRunGetTypographicBounds(run, CFRangeMake(0,0), &ascent, &descent, NULL);
-//                    imageRunBounds = CGRectMake(lineOrigin.x + CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, NULL), lineOrigin.y - descent, imageRunBounds.size.width, ascent + descent);
                     
                     UIImage *drawImage = [UIImage imageNamed:[image objectForKey:@"fileName"]];
                     
@@ -342,7 +334,7 @@ static CGFloat widthCallback( void* ref ){
                         
                         imageDrawRect.origin.x = imageRunBounds.origin.x;
                         imageDrawRect.origin.y = imageRunBounds.origin.y;
-                        //imageDrawRect.origin.y -= descent;
+                        imageDrawRect.origin.y -= descent;
                         imageDrawRect.size = imageRunBounds.size;
                         
 //                        imageDrawRect.origin.x = imageRunBounds.origin.x + lineOrigin.x;
@@ -365,19 +357,32 @@ static CGFloat widthCallback( void* ref ){
             }
             lineIndex++;
         }
-        
     }
-    
-    
-    CGContextDrawImage(context, CGRectMake(320, 50, 60, 30), [UIImage imageNamed:@"link"].CGImage);
-    
-    
-    
     
     CFRelease(ctframe);
     CFRelease(path);
     CFRelease(framersetter);
 
+}
+
+
+
+
+-(CGSize)sizeAttributedWithFont:(UIFont *)font constrainedToSize:(CGSize)size
+{
+    if (font != _font) {
+        _font = font;
+        self.attrString = [self generateAttributedString];
+    }
+    CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString((CFAttributedStringRef)self.attrString);
+    CFRange fitRange = CFRangeMake(0,0);
+    CGSize resultSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, CFRangeMake(0, CFStringGetLength((CFStringRef)self.attrString)), NULL, CGSizeMake(size.width,CGFLOAT_MAX), &fitRange);
+    
+  
+    CFRelease(framesetter);
+    
+    return resultSize;
+    
 }
 
 

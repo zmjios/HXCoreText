@@ -156,7 +156,6 @@
 		830246511B1A0E0400F8FAB1 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 830246501B1A0E0400F8FAB1 /* UIKit.framework */; };
 		830246531B1A0E0B00F8FAB1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 830246521B1A0E0B00F8FAB1 /* Foundation.framework */; };
 		830246561B1A0F8D00F8FAB1 /* HXURLLink.m in Sources */ = {isa = PBXBuildFile; fileRef = 830246551B1A0F8D00F8FAB1 /* HXURLLink.m */; };
-		830246591B1A1F2C00F8FAB1 /* CoreText.m in Sources */ = {isa = PBXBuildFile; fileRef = 830246581B1A1F2C00F8FAB1 /* CoreText.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -329,8 +328,6 @@
 		830246521B1A0E0B00F8FAB1 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		830246541B1A0F8D00F8FAB1 /* HXURLLink.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HXURLLink.h; sourceTree = "<group>"; };
 		830246551B1A0F8D00F8FAB1 /* HXURLLink.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HXURLLink.m; sourceTree = "<group>"; };
-		830246571B1A1F2C00F8FAB1 /* CoreText.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreText.h; sourceTree = "<group>"; };
-		830246581B1A1F2C00F8FAB1 /* CoreText.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreText.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -384,8 +381,6 @@
 				830245111B19DC7B00F8FAB1 /* AppDelegate.m */,
 				830245131B19DC7B00F8FAB1 /* ViewController.h */,
 				830245141B19DC7B00F8FAB1 /* ViewController.m */,
-				830246571B1A1F2C00F8FAB1 /* CoreText.h */,
-				830246581B1A1F2C00F8FAB1 /* CoreText.m */,
 				830245361B19E36600F8FAB1 /* HXCoreTextView.h */,
 				830245371B19E36600F8FAB1 /* HXCoreTextView.m */,
 				830245391B19EAEC00F8FAB1 /* NSTextCheckingResult+HXLinkType.h */,
@@ -807,7 +802,6 @@
 				830246561B1A0F8D00F8FAB1 /* HXURLLink.m in Sources */,
 				8302453B1B19EAEC00F8FAB1 /* NSTextCheckingResult+HXLinkType.m in Sources */,
 				830245151B19DC7B00F8FAB1 /* ViewController.m in Sources */,
-				830246591B1A1F2C00F8FAB1 /* CoreText.m in Sources */,
 				830245121B19DC7B00F8FAB1 /* AppDelegate.m in Sources */,
 				8302453E1B19EDB200F8FAB1 /* HXCoreTextManager.m in Sources */,
 				830245381B19E36600F8FAB1 /* HXCoreTextView.m in Sources */,

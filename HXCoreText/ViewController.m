@@ -8,7 +8,6 @@
 
 #import "ViewController.h"
 #import "HXCoreTextView.h"
-#import "CoreText.h"
 
 @interface ViewController ()
 

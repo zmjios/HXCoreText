@@ -7,8 +7,9 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "HXURLLink.h"
 
-
+@protocol HXCoreTextViewDelegate;
 @interface HXCoreTextView : UIView
 
 @property(nonatomic,strong)NSString *text;
@@ -18,9 +19,19 @@
 @property(nonatomic,assign)BOOL highlightBackground; //default is YES
 @property(nonatomic,assign)BOOL enableURL;
 
+@property(nonatomic,weak) id<HXCoreTextViewDelegate> delegate;
+
 
 
 //获取绘制大小
 -(CGSize)sizeAttributedWithFont:(UIFont *)font constrainedToSize:(CGSize)size;
+
+@end
+
+
+@protocol HXCoreTextViewDelegate <NSObject>
+
+@optional
+- (void)didTouchInCoreTextView:(HXCoreTextView *)coreTextView withUrlLink:(HXURLLink *)link;
 
 @end

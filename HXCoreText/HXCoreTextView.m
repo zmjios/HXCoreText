@@ -13,6 +13,7 @@
 #import "HXURLLink.h"
 
 #define URLREG @"(((http|ftp|https)\\://)|(www\\.|WWW\\.))[^\\[\\]\u4e00-\u9fa5\\s]*"
+#define URLREG2 @"((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[\\-;:&=\\+\\$,\\w]+@)?[A-Za-z0-9\\.\\-]+|(?:www\\.|[\\-;:&=\\+\\$,\\w]+@)[A-Za-z0-9\\.\\-]+)((:[0-9]+)?)((?:\\/[\\+~%\\/\\.\\w\\-]*)?\\??(?:[\\-\\+=&;%@\\.\\w]*)#?(?:[\\.\\!\\/\\\\\\w]*))?)"
 
 /* Callbacks */
 static void deallocCallback( void* ref ){
@@ -30,6 +31,9 @@ static CGFloat widthCallback( void* ref ){
 
 
 @interface HXCoreTextView ()
+{
+    CTFrameRef _textFrame;
+}
 
 @property(nonatomic, strong) NSMutableArray *links;   //所有的url的链接
 @property(nonatomic, strong) NSMutableArray *images;  //图片表情数组
@@ -44,6 +48,16 @@ static CGFloat widthCallback( void* ref ){
 
 
 @implementation HXCoreTextView
+
+
+-(void)dealloc
+{
+    if (_textFrame) {
+        CFRelease(_textFrame);
+        _textFrame = NULL;
+    }
+    
+}
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -73,13 +87,13 @@ static CGFloat widthCallback( void* ref ){
 
 -(void)setFont:(UIFont *)font
 {
-    _font=font;
+    _font = font;
     [self setNeedsDisplay];
 }
 
 -(void)setTextColor:(UIColor *)textColor
 {
-    _textColor=textColor;
+    _textColor = textColor;
     [self setNeedsDisplay];
 }
 
@@ -99,7 +113,6 @@ static CGFloat widthCallback( void* ref ){
     
     if (!_text) {
         self.attrString=nil;
-        self.forTruncating=nil;
         return nil;
     }
     
@@ -267,7 +280,7 @@ static CGFloat widthCallback( void* ref ){
     //翻转坐标系
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextSetTextMatrix(context, CGAffineTransformIdentity);
-    CGContextTranslateCTM(context, 0, CGRectGetHeight(self.bounds));
+    CGContextTranslateCTM(context, 0, CGRectGetHeight(rect));
     CGContextScaleCTM(context, 1.0, -1.0);
     
     self.attrString = [self generateAttributedString];
@@ -277,23 +290,22 @@ static CGFloat widthCallback( void* ref ){
     
     // 准备CGPath，用于CTFrame的构造
     CGMutablePathRef path = CGPathCreateMutable();
-    CGPathAddRect(path, NULL, self.bounds);
-    
+    CGPathAddRect(path, NULL, rect);
     
     // 构造CTFrame
     CTFramesetterRef framersetter = CTFramesetterCreateWithAttributedString((CFAttributedStringRef)self.attrString);
     //限制frame
     CFRange fitRange;
     CTFramesetterSuggestFrameSizeWithConstraints(framersetter, CFRangeMake(0, 0), NULL, rect.size, &fitRange);
-    CTFrameRef ctframe = CTFramesetterCreateFrame(framersetter, CFRangeMake(0, self.attrString.length), path, NULL);
-    CTFrameDraw(ctframe, context);
+    _textFrame = CTFramesetterCreateFrame(framersetter, CFRangeMake(0, self.attrString.length), path, NULL);
+    CTFrameDraw(_textFrame, context);
     
     // 得到Frame中的每一行，装在一个CFArray里
-    CFArrayRef lines = CTFrameGetLines(ctframe);
+    CFArrayRef lines = CTFrameGetLines(_textFrame);
     
     // 得到每一行的Line Origin（行原点），用以计算每一行的图片位置，注意，得到的点是以CTFrame为坐标系的坐标
     CGPoint lineOrigins[CFArrayGetCount(lines)];
-    CTFrameGetLineOrigins(ctframe, CFRangeMake(0, 0), lineOrigins);
+    CTFrameGetLineOrigins(_textFrame, CFRangeMake(0, 0), lineOrigins);
     
     if (self.images && self.images.count)
     {
@@ -359,7 +371,7 @@ static CGFloat widthCallback( void* ref ){
         }
     }
     
-    CFRelease(ctframe);
+    //CFRelease(ctframe);
     CFRelease(path);
     CFRelease(framersetter);
 
@@ -374,15 +386,98 @@ static CGFloat widthCallback( void* ref ){
         _font = font;
         self.attrString = [self generateAttributedString];
     }
+    if (!self.attrString) {
+        return self.bounds.size;
+    }
     CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString((CFAttributedStringRef)self.attrString);
     CFRange fitRange = CFRangeMake(0,0);
     CGSize resultSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, CFRangeMake(0, CFStringGetLength((CFStringRef)self.attrString)), NULL, CGSizeMake(size.width,CGFLOAT_MAX), &fitRange);
-    
-  
     CFRelease(framesetter);
     
-    return resultSize;
+    //hack:
+    //1.需要加上额外的一部分size,有些情况下计算出来的像素点并不是那么精准
+    //2.ios7的CTFramesetterSuggestFrameSizeWithConstraints方法比较残,需要多加一部分height
+    //3.ios7多行中如果首行带有很多空格，会导致返回的suggestionWidth远小于真是width,那么多行情况下就是用传入的width
     
+    CTFontRef fontRef = CTFontCreateWithName((CFStringRef)self.font.fontName, self.font.pointSize, NULL);
+    CGFloat fontHeight = CTFontGetSize(fontRef);
+    
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] > 6.9)
+    {
+        if (resultSize.height < fontHeight * 2)   //单行
+        {
+            return CGSizeMake(ceilf(resultSize.width) + 2.0, ceilf(resultSize.height) + 4.0);
+        }
+        else
+        {
+            return CGSizeMake(size.width, ceilf(resultSize.height) + 4.0);
+        }
+    }
+    else
+    {
+        return CGSizeMake(ceilf(resultSize.width) + 2.0, ceilf(resultSize.height) + 2.0);
+    }
+    
+}
+
+
+- (CGSize)sizeThatFits:(CGSize)size
+{
+    return [self sizeAttributedWithFont:self.font constrainedToSize:size];
+}
+
+
+
+
+#pragma mark - 点击事件相应
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    UITouch *touch = [touches anyObject];
+    CGPoint point = [touch locationInView:self];
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesMoved:touches withEvent:event];
+    UITouch *touch = [touches anyObject];
+    CGPoint point = [touch locationInView:self];
+
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesCancelled:touches withEvent:event];
+    
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    UITouch *touch = [touches anyObject];
+    CGPoint tapLocation = [touch locationInView:self];
+    
+    CGPoint reversePoint = CGPointMake(tapLocation.x, self.frame.size.height-tapLocation.y);
+    
+    CFArrayRef lines=CTFrameGetLines(_textFrame);
+    CGPoint points[CFArrayGetCount(lines)];
+    CTFrameGetLineOrigins(_textFrame, CFRangeMake(0, 0), points);
+    
+    for (CFIndex i=0; i<CFArrayGetCount(lines); i++) {
+        CTLineRef line = CFArrayGetValueAtIndex(lines, i);
+        CGPoint origin = points[i];
+        if (reversePoint.y>origin.y) {
+            NSInteger index = CTLineGetStringIndexForPosition(line, reversePoint);
+            for (HXURLLink *link in _links) {
+                if (index >= link.range.location && index <= link.range.location+link.range.length)
+                {
+                    NSLog(@"%@",link.url);
+                    if (_delegate && [_delegate respondsToSelector:@selector(didTouchInCoreTextView:withUrlLink:)]) {
+                        [_delegate didTouchInCoreTextView:self withUrlLink:link];
+                    }
+                }
+            }
+            break;
+        }
+    }
 }
 
 
